@@ -1,0 +1,6 @@
+{
+  "watch": ["./proxy.entry.ts", "../packages/sotaoi-omni/app-info.json", "../packages/sotaoi-api/proxy.ts"],
+  "ext": "*",
+  "ignore": ["../packages/sotaoi-omni/bundle.json"],
+  "exec": "ts-node --project ./tsconfig.json ./proxy.entry.ts"
+}

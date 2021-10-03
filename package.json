@@ -1,0 +1,35 @@
+{
+  "name": "@app/proxy",
+  "private": true,
+  "version": "0.9.1",
+  "description": "",
+  "engines": {
+    "node": "14.x"
+  },
+  "scripts": {
+    "bootstrap": "npm install --no-audit --no-fund",
+    "start:proxy": "NODE_ENV=development PORT=443 nodemon --config ./cfg-nodemon-proxy.json",
+    "start:proxy:prod": "NODE_ENV=production PORT=443 nodemon --config ./cfg-nodemon-proxy.json",
+    "ssl:greenlock": "ts-node ./scripts/ssl-greenlock",
+    "ssl:greenlock:prod": "ts-node ./scripts/ssl-greenlock",
+    "postinstall": "ts-node ./scripts/hooks/posthook"
+  },
+  "devDependencies": {
+    "@app/api": "file:./",
+    "@types/hapi__hapi": "^19.0.3",
+    "@types/node": "^14",
+    "@types/node-fetch": "^2.5.10",
+    "@types/shelljs": "^0.8.8",
+    "@types/yargs": "^17.0.0"
+  },
+  "dependencies": {
+    "@sotaoi/api": "file:../packages/sotaoi-api",
+    "@sotaoi/omni": "file:../packages/sotaoi-omni",
+    "dotenv": "^8.2.0",
+    "greenlock": "^4.0.4",
+    "nodemon": "^2.0.4",
+    "ts-node": "^8.10.2",
+    "typescript": "4.1.5",
+    "yargs": "^16.1.1"
+  }
+}
