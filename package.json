@@ -12,10 +12,12 @@
     "start:proxy:prod": "NODE_ENV=production PORT=443 nodemon --config ./cfg-nodemon-proxy.json",
     "ssl:greenlock": "ts-node ./scripts/ssl-greenlock",
     "ssl:greenlock:prod": "ts-node ./scripts/ssl-greenlock",
+    "app:up": "ts-node ./scripts/app-up",
+    "app:down": "ts-node ./scripts/app-down",
     "postinstall": "ts-node ./scripts/hooks/posthook"
   },
   "devDependencies": {
-    "@app/api": "file:./",
+    "@app/proxy": "file:./",
     "@types/hapi__hapi": "^19.0.3",
     "@types/node": "^14",
     "@types/node-fetch": "^2.5.10",
