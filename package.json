@@ -9,7 +9,9 @@
   "scripts": {
     "bootstrap": "npm install --no-audit --no-fund",
     "start:proxy": "NODE_ENV=development PORT=443 nodemon --config ./cfg-nodemon-proxy.json",
-    "start:proxy:prod": "NODE_ENV=production PORT=443 nodemon --config ./cfg-nodemon-proxy.json",
+    "start:proxy:prod": "NODE_ENV=production PORT=443 forever start -v -c ts-node proxy.entry.ts",
+    "restart:proxy:prod": "forever restart proxy.entry.ts",
+    "stop:proxy:prod": "forever stop proxy.entry.ts",
     "ssl:greenlock": "ts-node ./scripts/ssl-greenlock",
     "ssl:greenlock:prod": "ts-node ./scripts/ssl-greenlock",
     "app:up": "ts-node ./scripts/app-up",
@@ -32,6 +34,7 @@
     "@sotaoi/api": "^0.9.1",
     "@sotaoi/omni": "^0.9.1",
     "dotenv": "^8.2.0",
+    "forever": "^4.0.1",
     "greenlock": "^4.0.4",
     "nodemon": "^2.0.4",
     "ts-node": "^8.10.2",
