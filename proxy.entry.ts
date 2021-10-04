@@ -1,10 +1,15 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-require('dotenv').config();
-process.env.SIGNATURE_1 = process.env.DB_NAME;
-process.env.SIGNATURE_2 = process.env.DB_CONTROL_PANEL_NAME;
+import { config } from '@app/omni/config';
+config('');
 import { proxy } from '@sotaoi/api/proxy';
 import { getAppInfo, getAppDomain } from '@sotaoi/omni/get-app-info';
 import yargs from 'yargs';
+import { AppKernel } from '@sotaoi/api/app-kernel';
+
+process.env.SIGNATURE_1 = process.env.DB_NAME;
+process.env.SIGNATURE_2 = process.env.DB_CONTROL_PANEL_NAME;
+
+new AppKernel().bootstrap(config);
 
 const argv: { [key: string]: any } = yargs
   .option('testserver', {
@@ -14,4 +19,4 @@ const argv: { [key: string]: any } = yargs
   .help()
   .alias('help', 'h').argv;
 
-proxy(getAppInfo(require('dotenv')), getAppDomain(require('dotenv')), !!argv.testserver);
+proxy(getAppInfo(), getAppDomain(), !!argv.testserver);
