@@ -1,4 +1,4 @@
-import { config } from '@app/omni/config';
+const { config } = require('@app/omni/config');
 config('');
 import { getAppInfo } from '@sotaoi/omni/get-app-info';
 import { Store } from '@sotaoi/api/store';

@@ -20,13 +20,12 @@
   "devDependencies": {
     "@app/omni": "file:../app-omni",
     "@app/proxy": "file:./",
-    "@sotaoi/api": "file:../packages/sotaoi-api",
     "@types/node": "^14",
     "@types/yargs": "^17.0.0"
   },
   "dependencies": {
-    "@app/omni": "^0.9.1",
-    "@sotaoi/api": "^0.9.1",
+    "@app/omni": "git+https://github.com/sotaoi/app-omni#0.9.1",
+    "@sotaoi/api": "git+https://github.com/sotaoi/api#0.9.1",
     "@sotaoi/omni": "git+https://github.com/sotaoi/omni#0.9.1",
     "forever": "^4.0.1",
     "greenlock": "^4.0.4",

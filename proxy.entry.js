@@ -1,17 +1,17 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-import { config } from '@app/omni/config';
+const { config } = require('@app/omni/config');
 config('');
-import { proxy } from '@sotaoi/api/proxy';
-import { getAppInfo, getAppDomain } from '@sotaoi/omni/get-app-info';
-import yargs from 'yargs';
-import { AppKernel } from '@sotaoi/api/app-kernel';
+const { proxy } = require('@sotaoi/api/proxy');
+const { getAppInfo, getAppDomain } = require('@sotaoi/omni/get-app-info');
+const yargs = require('yargs');
+const { AppKernel } = require('@sotaoi/api/app-kernel');
 
 process.env.SIGNATURE_1 = process.env.DB_NAME;
 process.env.SIGNATURE_2 = process.env.DB_CONTROL_PANEL_NAME;
 
 new AppKernel().bootstrap(config);
 
-const argv: { [key: string]: any } = yargs
+const argv = yargs
   .option('testserver', {
     description: 'Start non https express on port 80',
     type: 'boolean',
