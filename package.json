@@ -9,13 +9,13 @@
   "scripts": {
     "bootstrap": "npm install --no-audit --no-fund",
     "start:proxy": "NODE_ENV=development nodemon --config ./cfg-nodemon-proxy.json",
-    "start:proxy:prod": "NODE_ENV=production forever start -v -c ts-node ./proxy.entry.ts",
-    "restart:proxy:prod": "forever restart ./proxy.entry.ts",
-    "stop:proxy:prod": "forever stop ./proxy.entry.ts",
-    "ssl:greenlock": "ts-node ./scripts/ssl-greenlock",
-    "ssl:greenlock:prod": "ts-node ./scripts/ssl-greenlock",
-    "app:up": "ts-node ./scripts/app-up",
-    "app:down": "ts-node ./scripts/app-down"
+    "start:proxy:prod": "NODE_ENV=production forever start -v -c node ./proxy.entry.js",
+    "restart:proxy:prod": "forever restart ./proxy.entry.js",
+    "stop:proxy:prod": "forever stop ./proxy.entry.js",
+    "ssl:greenlock": "node ./scripts/ssl-greenlock",
+    "ssl:greenlock:prod": "node ./scripts/ssl-greenlock",
+    "app:up": "node ./scripts/app-up",
+    "app:down": "node ./scripts/app-down"
   },
   "devDependencies": {
     "@app/omni": "file:../app-omni",
@@ -31,8 +31,6 @@
     "forever": "^4.0.1",
     "greenlock": "^4.0.4",
     "nodemon": "^2.0.4",
-    "ts-node": "^8.10.2",
-    "typescript": "4.1.5",
     "yargs": "^16.1.1"
   }
 }
