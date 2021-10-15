@@ -10,7 +10,7 @@
 
 # app
 /.greenlockrc
-/node_modules
+**/node_modules/**
 /storage/*
 !/storage/.gitkeep
 /var/greenlock.d
@@ -18,6 +18,9 @@
 # logs
 /logs/*
 !/logs/.gitkeep
+!/logs/apache
+/logs/apache/*
+!/logs/apache/.gitkeep
 
 
 # ide
