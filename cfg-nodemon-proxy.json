@@ -1,6 +1,6 @@
 {
-  "watch": ["./", "../app-omni", "../packages/sotaoi-api", "../packages/sotaoi-omni"],
+  "watch": ["./", "./node_modules/@app/omni", "./node_modules/@sotaoi/api", "./node_modules/@sotaoi/omni"],
   "ext": "*",
-  "ignore": ["./logs", "../packages/sotaoi-omni/bundle.json"],
+  "ignore": ["./logs", "./node_modules/@sotaoi/omni/bundle.json"],
   "exec": "node ./proxy.entry.js"
 }

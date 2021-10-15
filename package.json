@@ -20,15 +20,22 @@
   "devDependencies": {
     "@app/omni": "file:../app-omni",
     "@app/proxy": "file:./",
+    "@sotaoi/api": "file:../packages/sotaoi-api",
     "@types/node": "^14",
     "@types/yargs": "^17.0.0"
   },
   "dependencies": {
     "@app/omni": "git+https://github.com/sotaoi/app-omni#0.9.1",
     "@sotaoi/api": "git+https://github.com/sotaoi/api#0.9.1",
+    "@sotaoi/logger": "git+https://github.com/sotaoi/logger#0.9.1",
     "@sotaoi/omni": "git+https://github.com/sotaoi/omni#0.9.1",
+    "express": "4.17.1",
+    "express-rate-limit": "^5.2.6",
     "forever": "^4.0.1",
     "greenlock": "^4.0.4",
+    "http-proxy-middleware": "^1.0.5",
+    "knex": "^0.95.6",
+    "mysql": "^2.18.1",
     "nodemon": "^2.0.4",
     "yargs": "^16.1.1"
   }
