@@ -8,13 +8,9 @@
   },
   "scripts": {
     "bootstrap": "npm install --no-audit --no-fund",
-    "start:proxy": "node ./var/start-php.js"
-  },
-  "devDependencies": {
-    "@types/node": "^14"
-  },
-  "old:scripts": {
-    "start:proxy:prod": "NODE_ENV=production forever start -v -c node ./proxy.entry.js",
+    "start:proxy": "NODE_ENV=development nodemon --config ./cfg-nodemon-proxy.json",
+    "dis:start:proxy:prod": "NODE_ENV=production forever start -v -c node ./proxy.entry.js",
+    "start:proxy:prod": "NODE_ENV=production node ./proxy.entry.js",
     "restart:proxy:prod": "forever restart ./proxy.entry.js",
     "stop:proxy:prod": "forever stop ./proxy.entry.js",
     "ssl:greenlock": "node ./scripts/ssl-greenlock",
@@ -22,14 +18,13 @@
     "app:up": "node ./scripts/app-up",
     "app:down": "node ./scripts/app-down"
   },
-  "old:devDependencies": {
+  "devDependencies": {
     "@app/omni": "file:../app-omni",
     "@app/proxy": "file:./",
-    "@sotaoi/api": "file:../packages/sotaoi-api",
     "@types/node": "^14",
     "@types/yargs": "^17.0.0"
   },
-  "old:dependencies": {
+  "dependencies": {
     "@app/omni": "git+https://github.com/sotaoi/app-omni#0.9.1",
     "@sotaoi/api": "git+https://github.com/sotaoi/api#0.9.1",
     "@sotaoi/logger": "git+https://github.com/sotaoi/logger#0.9.1",

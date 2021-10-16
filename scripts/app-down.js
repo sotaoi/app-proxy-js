@@ -1,8 +1,8 @@
 #!/bin/env node
 
-import { bootstrapRoutine } from '@app/proxy/scripts/routines/bootstrap-routine';
-import { Store } from '@sotaoi/api/store';
-import { logger } from '@sotaoi/api/logger';
+const { bootstrapRoutine } = require('@app/proxy/scripts/routines/bootstrap-routine');
+const { Store } = require('@sotaoi/api/store');
+const { logger } = require('@sotaoi/api/logger');
 
 const main = async () => {
   const done = await bootstrapRoutine();
