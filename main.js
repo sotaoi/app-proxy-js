@@ -21,7 +21,7 @@ const main = new Deployment(async (setReload) => {
   let sconnected = false;
   let db = null;
   let greenlock = false;
-  let appMaintenance = false;
+  let appMaintenance = null;
   let needsGreenlock = false;
 
   let initInterval = null;
@@ -36,12 +36,18 @@ const main = new Deployment(async (setReload) => {
   const appDomain = getAppDomain();
 
   const middleware = {
+    //
+
     rlm: rateLimit({
       windowMs: 10 * 60 * 1000, // 10 minutes
       max: 2000, // limit each IP to 2000 requests per windowMs
     }),
+
+    //
   };
   const routeMiddleware = {
+    //
+
     '/api': (req, res, next) => {
       if (appMaintenance === null || appMaintenance === true) {
         return;
@@ -73,19 +79,21 @@ const main = new Deployment(async (setReload) => {
         changeOrigin: true,
       })(req, res, next);
     },
+
+    //
   };
 
-  JSON.parse(execSync('php artisan routes', { cwd: path.resolve('../app-php') }).toString()).map((route) => {
-    route = route.replace(new RegExp('{(?:\\s+)?(.*)(?:\\s+)?}'), ':$1');
-    routeMiddleware[route] = (req, res, next) => {
-      return createProxyMiddleware({
-        secure: false,
-        target: `https://${appDomain}:4000`,
-        ws: true,
-        changeOrigin: true,
-      })(req, res, next);
-    };
-  });
+  // JSON.parse(execSync('php artisan routes', { cwd: path.resolve('../app-php') }).toString()).map((route) => {
+  //   route = route.replace(new RegExp('{(?:\\s+)?(.*)(?:\\s+)?}'), ':$1');
+  //   routeMiddleware[route] = (req, res, next) => {
+  //     return createProxyMiddleware({
+  //       secure: false,
+  //       target: `https://${appDomain}:4000`,
+  //       ws: true,
+  //       changeOrigin: true,
+  //     })(req, res, next);
+  //   };
+  // });
 
   appInfo.oauthPrefix &&
     (routeMiddleware[appInfo.oauthPrefix] = (req, res, next) => {
@@ -192,7 +200,7 @@ const main = new Deployment(async (setReload) => {
 
   const startServer = async () => {
     clearInterval(initInterval);
-    initInterval = setInterval(async () => {
+    const initIntervalFn = async () => {
       try {
         const appRecord = (await db('app').where('bundleUid', appInfo.bundleUid).first()) || null;
         const appPocket =
@@ -201,7 +209,9 @@ const main = new Deployment(async (setReload) => {
       } catch (err) {
         logger().error(err);
       }
-    }, 2000);
+    };
+    initInterval = setInterval(initIntervalFn, 2000);
+    initIntervalFn();
 
     server = await runServer(
       { ...certs(appInfo), rejectUnauthorized: false },
@@ -268,7 +278,7 @@ const main = new Deployment(async (setReload) => {
   }
 
   clearInterval(startServerInterval);
-  startServerInterval = setInterval(async () => {
+  const startServerFn = async () => {
     if (!hasCerts(appInfo)) {
       logger().info('certificates not yet installed. waiting to start server...');
       if (!greenlock && appInfo.greenlockExecution === 'autorun') {
@@ -287,7 +297,9 @@ const main = new Deployment(async (setReload) => {
     needsGreenlock = false;
     clearInterval(startServerInterval);
     await startServer();
-  }, 5000);
+  };
+  startServerInterval = setInterval(startServerFn, 5000);
+  startServerFn();
 });
 
 module.exports = { main };
