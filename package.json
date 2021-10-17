@@ -23,7 +23,6 @@
     "app:down": "node ./scripts/app/app-down"
   },
   "devDependencies": {
-    "@app/omni": "file:../app-omni",
     "@app/proxy": "file:./",
     "@types/node": "^14",
     "@types/yargs": "^17.0.0"
