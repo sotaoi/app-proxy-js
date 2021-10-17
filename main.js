@@ -34,16 +34,6 @@ const main = new Deployment(async (setReload) => {
 
   const appInfo = getAppInfo();
   const appDomain = getAppDomain();
-  const validDomains = [
-    appInfo.prodDomain,
-    appInfo.prodDomainAlias,
-    appInfo.stageDomain,
-    appInfo.stageDomainAlias,
-    appInfo.devDomain,
-    appInfo.devDomainAlias,
-    appInfo.localDomain,
-    appInfo.localDomainAlias,
-  ];
 
   const middleware = {
     rlm: rateLimit({
@@ -57,18 +47,6 @@ const main = new Deployment(async (setReload) => {
         return;
       }
 
-      let ok = false;
-      for (const validDomain of validDomains) {
-        const currentDomain = req.get('host') || '';
-        if (currentDomain.indexOf(validDomain) === -1) {
-          continue;
-        }
-        ok = true;
-        break;
-      }
-      if (!ok) {
-        return res.send({ error: 'Not Found', message: 'Not Found', code: 404 });
-      }
       return createProxyMiddleware({
         secure: false,
         // pathRewrite: {
@@ -82,6 +60,7 @@ const main = new Deployment(async (setReload) => {
         changeOrigin: true,
       })(req, res, next);
     },
+
     '/socket.io': (req, res, next) => {
       if (appMaintenance === null || appMaintenance === true) {
         return;
@@ -189,10 +168,11 @@ const main = new Deployment(async (setReload) => {
   };
 
   const hasCerts = () => {
-    const keyPath = path.resolve(appInfo.sslKey);
-    const certPath = path.resolve(appInfo.sslCert);
-    const chainPath = path.resolve(appInfo.sslCa);
-    return !(!fs.existsSync(keyPath) || !fs.existsSync(certPath) || !fs.existsSync(chainPath));
+    return !(
+      !fs.existsSync(path.resolve(appInfo.sslKey)) ||
+      !fs.existsSync(path.resolve(appInfo.sslCert)) ||
+      !fs.existsSync(path.resolve(appInfo.sslCa))
+    );
   };
 
   const certs = () => {
@@ -239,7 +219,7 @@ const main = new Deployment(async (setReload) => {
     server.start(appInfo.proxyPort);
 
     setReload(async () => {
-      console.log('Reloading...');
+      console.info('Reloading...');
       clearInterval(initInterval);
       clearInterval(startServerInterval);
       clearTimeout(dbDestroyTimeout);

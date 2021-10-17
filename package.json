@@ -8,9 +8,10 @@
   },
   "scripts": {
     "bootstrap": "npm install --no-audit --no-fund",
+    "bootstrap:prod": "npm install --production --no-audit --no-fund",
     "start:proxy": "NODE_ENV=development nodemon --config ./cfg-nodemon-proxy.json",
-    "dis:start:proxy:prod": "NODE_ENV=production forever start -v -c node ./proxy.entry.js",
-    "start:proxy:prod": "NODE_ENV=production node ./proxy.entry.js",
+    "start:proxy:prod": "NODE_ENV=production forever start -v -c node ./proxy.entry.js",
+    "start:proxy:prod:sim": "NODE_ENV=production node ./proxy.entry.js",
     "restart:proxy:prod": "forever restart ./proxy.entry.js",
     "stop:proxy:prod": "forever stop ./proxy.entry.js",
     "ssl:greenlock": "node ./scripts/ssl-greenlock",
@@ -21,6 +22,8 @@
   "devDependencies": {
     "@app/omni": "file:../app-omni",
     "@app/proxy": "file:./",
+    "@sotaoi/api": "file:../packages/sotaoi-api/deployment",
+    "@sotaoi/omni": "file:../packages/sotaoi-omni/deployment",
     "@types/node": "^14",
     "@types/yargs": "^17.0.0"
   },
