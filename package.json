@@ -29,6 +29,7 @@
     "@types/yargs": "^17.0.0"
   },
   "dependencies": {
+    "@app/omni": "file:../app-omni",
     "@sotaoi/api": "git+https://github.com/sotaoi/api#0.9.1",
     "@sotaoi/logger": "git+https://github.com/sotaoi/logger#0.9.1",
     "@sotaoi/omni": "git+https://github.com/sotaoi/omni#0.9.1",
