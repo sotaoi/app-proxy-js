@@ -5,7 +5,3 @@ const { aux } = require('@app/proxy/aux');
 
 main.run();
 aux.run();
-
-setTimeout(() => {
-  main.reload();
-}, 10000);
