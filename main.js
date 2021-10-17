@@ -83,17 +83,17 @@ const main = new Deployment(async (setReload) => {
     //
   };
 
-  // JSON.parse(execSync('php artisan routes', { cwd: path.resolve('../app-php') }).toString()).map((route) => {
-  //   route = route.replace(new RegExp('{(?:\\s+)?(.*)(?:\\s+)?}'), ':$1');
-  //   routeMiddleware[route] = (req, res, next) => {
-  //     return createProxyMiddleware({
-  //       secure: false,
-  //       target: `https://${appDomain}:4000`,
-  //       ws: true,
-  //       changeOrigin: true,
-  //     })(req, res, next);
-  //   };
-  // });
+  JSON.parse(execSync('php artisan routes', { cwd: path.resolve('../app-php') }).toString()).map((route) => {
+    route = route.replace(new RegExp('{(?:\\s+)?(.*)(?:\\s+)?}'), ':$1');
+    routeMiddleware[route] = (req, res, next) => {
+      return createProxyMiddleware({
+        secure: false,
+        target: `https://${appDomain}:4000`,
+        ws: true,
+        changeOrigin: true,
+      })(req, res, next);
+    };
+  });
 
   appInfo.oauthPrefix &&
     (routeMiddleware[appInfo.oauthPrefix] = (req, res, next) => {
@@ -177,16 +177,16 @@ const main = new Deployment(async (setReload) => {
 
   const hasCerts = () => {
     return !(
-      !fs.existsSync(path.resolve(appInfo.sslKey)) ||
-      !fs.existsSync(path.resolve(appInfo.sslCert)) ||
-      !fs.existsSync(path.resolve(appInfo.sslCa))
+      !fs.existsSync(require.resolve(appInfo.sslKey)) ||
+      !fs.existsSync(require.resolve(appInfo.sslCert)) ||
+      !fs.existsSync(require.resolve(appInfo.sslCa))
     );
   };
 
   const certs = () => {
-    const keyPath = path.resolve(appInfo.sslKey);
-    const certPath = path.resolve(appInfo.sslCert);
-    const chainPath = path.resolve(appInfo.sslCa);
+    const keyPath = require.resolve(appInfo.sslKey);
+    const certPath = require.resolve(appInfo.sslCert);
+    const chainPath = require.resolve(appInfo.sslCa);
     return {
       key: fs.readFileSync(keyPath),
       cert: fs.readFileSync(certPath),
