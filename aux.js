@@ -42,9 +42,9 @@ const aux = new Deployment(async (setReload) => {
     );
     server.start('80');
 
-    setReload(() => {
+    setReload(async () => {
       console.info('Reloading...');
-      server.reload();
+      await server.reload();
     });
   }
 });

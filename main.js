@@ -1,117 +1,64 @@
-const main = async (scope) => {
-  if (typeof scope.reload === 'function') {
-    await scope.reload();
-  }
+const { Deployment } = require('@sotaoi/api/var/deployment');
 
-  for (const key of Object.keys(scope)) {
-    delete scope[key];
-  }
+const main = new Deployment(async (setReload) => {
+  const { init } = require('@app/omni/init');
+  init();
+  const { config } = require('@app/omni/config');
+  const { execSync, spawn } = require('child_process');
+  const fs = require('fs');
+  const path = require('path');
+  const express = require('express');
+  const { createProxyMiddleware } = require('http-proxy-middleware');
+  const { getAppInfo } = require('@sotaoi/omni/get-app-info');
+  const { getAppDomain } = require('@sotaoi/omni/get-app-info');
+  const knex = require('knex');
+  const { logger } = require('@sotaoi/logger');
+  const rateLimit = require('express-rate-limit');
+  const { runServer } = require('@sotaoi/api/var/run-server');
 
-  scope.reload = async () => {
-    // console.info(scope);
-    // console.info(require.cache);
-    scope.server.close(() => {
-      console.log('yolo?');
-    });
-    return false;
-  };
+  logger(path.resolve('./logs'));
 
-  scope.init = require('@app/omni/init').init;
-  scope.init();
-  scope.config = require('@app/omni/config').config;
-  scope.execSync = require('child_process').execSync;
-  scope.spawn = require('child_process').spawn;
-  scope.fs = require('fs');
-  scope.path = require('path');
-  scope.express = require('express');
-  scope.https = require('https');
-  scope.createProxyMiddleware = require('http-proxy-middleware').createProxyMiddleware;
-  scope.getAppInfo = require('@sotaoi/omni/get-app-info').getAppInfo;
-  scope.getAppDomain = require('@sotaoi/omni/get-app-info').getAppDomain;
-  scope.knex = require('knex');
-  scope.logger = require('@sotaoi/logger').logger;
-  scope.rateLimit = require('express-rate-limit');
+  let sconnected = false;
+  let db = null;
+  let greenlock = false;
+  let appMaintenance = false;
+  let needsGreenlock = false;
 
-  scope.logger(scope.path.resolve('./logs'));
+  let initInterval = null;
+  let startServerInterval = null;
 
-  scope.appInfo = scope.getAppInfo();
-  scope.appDomain = scope.getAppDomain();
-  scope.validDomains = [
-    scope.appInfo.prodDomain,
-    scope.appInfo.prodDomainAlias,
-    scope.appInfo.stageDomain,
-    scope.appInfo.stageDomainAlias,
-    scope.appInfo.devDomain,
-    scope.appInfo.devDomainAlias,
-    scope.appInfo.localDomain,
-    scope.appInfo.localDomainAlias,
+  let app = null;
+  let server = null;
+
+  let dbDestroyTimeout = null;
+
+  const appInfo = getAppInfo();
+  const appDomain = getAppDomain();
+  const validDomains = [
+    appInfo.prodDomain,
+    appInfo.prodDomainAlias,
+    appInfo.stageDomain,
+    appInfo.stageDomainAlias,
+    appInfo.devDomain,
+    appInfo.devDomainAlias,
+    appInfo.localDomain,
+    appInfo.localDomainAlias,
   ];
 
-  scope.sconnected = false;
-  scope.db = null;
-  scope.greenlock = false;
-  scope.exitHandled = false;
-  scope.appMaintenance = null;
-  scope.needsGreenlock = false;
-
-  // app, server listener and middleware {{
-  scope.server = null;
-  scope.app = null;
-  scope.middleware = {
-    rlm: scope.rateLimit({
+  const middleware = {
+    rlm: rateLimit({
       windowMs: 10 * 60 * 1000, // 10 minutes
       max: 2000, // limit each IP to 2000 requests per windowMs
     }),
   };
-  scope.routeMiddleware = {
-    '/': (req, res, next) => {
-      if (scope.appMaintenance === null || scope.appMaintenance === true) {
-        return res.send({
-          code: 200,
-          title: scope.appMaintenance === null ? 'Proxy server is starting up' : 'Service is currently unavailable',
-          message:
-            scope.appMaintenance === null
-              ? 'Proxy server is spinning, please wait'
-              : 'We are currently undergoing maintenance operations',
-        });
-      }
-
-      if (scope.needsGreenlock) {
-        if (req.url.substr(0, 12) === '/.well-known') {
-          scope.logger().info(`running acme verification: ${req.url}`);
-          const acme = scope.fs.readdirSync(scope.path.resolve('./var/greenlock.d/accounts'));
-          const urlSplit = req.url.substr(1).split('/');
-          const credentials = require(scope.path.resolve(
-            `./var/greenlock.d/accounts/${acme[0]}/directory/${scope.appInfo.sslMaintainer}.json`,
-          ));
-          scope.logger().info('greenlock credentials:', credentials);
-          return res.send(urlSplit[2] + '.' + credentials.publicKeyJwk.kid);
-        }
-        return res.send('waiting for greenlock...');
-      }
-
-      if (req.headers['x-forwarded-proto'] === 'http') {
-        return res.redirect(`https://${scope.appDomain}${req.url}`);
-      }
-
-      if (scope.appMaintenance === null || scope.appMaintenance === true) {
-        return;
-      }
-
-      return scope.createProxyMiddleware({
-        secure: false,
-        target: `https://${scope.appDomain}:8080`,
-        ws: true,
-        changeOrigin: false,
-      })(req, res, next);
-    },
+  const routeMiddleware = {
     '/api': (req, res, next) => {
-      if (scope.appMaintenance === null || scope.appMaintenance === true) {
+      if (appMaintenance === null || appMaintenance === true) {
         return;
       }
 
       let ok = false;
-      for (const validDomain of scope.validDomains) {
+      for (const validDomain of validDomains) {
         const currentDomain = req.get('host') || '';
         if (currentDomain.indexOf(validDomain) === -1) {
           continue;
@@ -122,7 +69,7 @@ const main = async (scope) => {
       if (!ok) {
         return res.send({ error: 'Not Found', message: 'Not Found', code: 404 });
       }
-      return scope.createProxyMiddleware({
+      return createProxyMiddleware({
         secure: false,
         // pathRewrite: {
         //   '^/api/': '/api/',
@@ -130,63 +77,101 @@ const main = async (scope) => {
         // pathRewrite: {
         //   '^/api': '/api',
         // },
-        target: `https://${scope.appDomain}:${scope.appInfo.apiPort}`,
+        target: `https://${appDomain}:${appInfo.apiPort}`,
         ws: false,
         changeOrigin: true,
       })(req, res, next);
     },
     '/socket.io': (req, res, next) => {
-      if (scope.appMaintenance === null || scope.appMaintenance === true) {
+      if (appMaintenance === null || appMaintenance === true) {
         return;
       }
 
-      return scope.createProxyMiddleware({
+      return createProxyMiddleware({
         secure: false,
-        target: `https://${scope.appDomain}:${scope.appInfo.streamingPort}`,
+        target: `https://${appDomain}:${appInfo.streamingPort}`,
         ws: true,
         changeOrigin: true,
       })(req, res, next);
     },
   };
-  JSON.parse(scope.execSync('php artisan routes', { cwd: scope.path.resolve('../app-php') }).toString()).map(
-    (route) => {
-      route = route.replace(new RegExp('{(?:\\s+)?(.*)(?:\\s+)?}'), ':$1');
-      scope.routeMiddleware[route] = (req, res, next) => {
-        return scope.createProxyMiddleware({
-          secure: false,
-          target: `https://${scope.appDomain}:4000`,
-          ws: true,
-          changeOrigin: true,
-        })(req, res, next);
-      };
-    },
-  );
-  scope.appInfo.oauthPrefix &&
-    (scope.routeMiddleware[scope.appInfo.oauthPrefix] = (req, res, next) => {
-      if (scope.appMaintenance === null || scope.appMaintenance === true) {
+
+  JSON.parse(execSync('php artisan routes', { cwd: path.resolve('../app-php') }).toString()).map((route) => {
+    route = route.replace(new RegExp('{(?:\\s+)?(.*)(?:\\s+)?}'), ':$1');
+    routeMiddleware[route] = (req, res, next) => {
+      return createProxyMiddleware({
+        secure: false,
+        target: `https://${appDomain}:4000`,
+        ws: true,
+        changeOrigin: true,
+      })(req, res, next);
+    };
+  });
+
+  appInfo.oauthPrefix &&
+    (routeMiddleware[appInfo.oauthPrefix] = (req, res, next) => {
+      if (appMaintenance === null || appMaintenance === true) {
         return;
       }
 
-      return scope.createProxyMiddleware({
+      return createProxyMiddleware({
         secure: false,
-        target: `http://${scope.appDomain}:${config('scope.app.oauth_port')}`,
+        target: `http://${appDomain}:${config('app.oauth_port')}`,
         ws: false,
         changeOrigin: false,
       })(req, res, next);
     });
-  // }}
 
-  scope.initInterval = null;
-  scope.startServerInterval = null;
+  routeMiddleware['/'] = (req, res, next) => {
+    if (appMaintenance === null || appMaintenance === true) {
+      return res.send({
+        code: 200,
+        title: appMaintenance === null ? 'Proxy server is starting up' : 'Service is currently unavailable',
+        message:
+          appMaintenance === null
+            ? 'Proxy server is spinning, please wait'
+            : 'We are currently undergoing maintenance operations',
+      });
+    }
 
-  scope.sconnect = async () => {
-    if (scope.sconnected) {
+    if (needsGreenlock) {
+      if (req.url.substr(0, 12) === '/.well-known') {
+        logger().info(`running acme verification: ${req.url}`);
+        const acme = fs.readdirSync(path.resolve('./var/greenlock.d/accounts'));
+        const urlSplit = req.url.substr(1).split('/');
+        const credentials = require(path.resolve(
+          `./var/greenlock.d/accounts/${acme[0]}/directory/${appInfo.sslMaintainer}.json`,
+        ));
+        logger().info('greenlock credentials:', credentials);
+        return res.send(urlSplit[2] + '.' + credentials.publicKeyJwk.kid);
+      }
+      return res.send('waiting for greenlock...');
+    }
+
+    if (req.headers['x-forwarded-proto'] === 'http') {
+      return res.redirect(`https://${appDomain}${req.url}`);
+    }
+
+    if (appMaintenance === null || appMaintenance === true) {
       return;
     }
-    scope.sconnected = true;
-    const dbConfig = scope.config('db');
 
-    scope.db = await scope.knex({
+    return createProxyMiddleware({
+      secure: false,
+      target: `https://${appDomain}:8080`,
+      ws: true,
+      changeOrigin: false,
+    })(req, res, next);
+  };
+
+  const sconnect = async () => {
+    if (sconnected) {
+      return;
+    }
+    sconnected = true;
+    const dbConfig = config('db');
+
+    db = await knex({
       client: 'mysql',
       connection: {
         host: dbConfig.connection.host,
@@ -195,122 +180,134 @@ const main = async (scope) => {
         database: dbConfig.connection.control_panel_database,
       },
       migrations: {
-        directory: scope.path.resolve(
-          scope.path.dirname(require.resolve('@sotaoi/api/package.json')),
-          'db',
-          'migrations',
-        ),
+        directory: path.resolve(path.dirname(require.resolve('@sotaoi/api/package.json')), 'db', 'migrations'),
       },
       seeds: {
-        directory: scope.path.resolve(scope.path.dirname(require.resolve('@sotaoi/api/package.json')), 'db', 'seeds'),
+        directory: path.resolve(path.dirname(require.resolve('@sotaoi/api/package.json')), 'db', 'seeds'),
       },
     });
   };
 
-  scope.hasCerts = () => {
-    const keyPath = scope.path.resolve(scope.appInfo.sslKey);
-    const certPath = scope.path.resolve(scope.appInfo.sslCert);
-    const chainPath = scope.path.resolve(scope.appInfo.sslCa);
-    return !(!scope.fs.existsSync(keyPath) || !scope.fs.existsSync(certPath) || !scope.fs.existsSync(chainPath));
+  const hasCerts = () => {
+    const keyPath = path.resolve(appInfo.sslKey);
+    const certPath = path.resolve(appInfo.sslCert);
+    const chainPath = path.resolve(appInfo.sslCa);
+    return !(!fs.existsSync(keyPath) || !fs.existsSync(certPath) || !fs.existsSync(chainPath));
   };
 
-  scope.certs = () => {
-    const keyPath = scope.path.resolve(scope.appInfo.sslKey);
-    const certPath = scope.path.resolve(scope.appInfo.sslCert);
-    const chainPath = scope.path.resolve(scope.appInfo.sslCa);
+  const certs = () => {
+    const keyPath = path.resolve(appInfo.sslKey);
+    const certPath = path.resolve(appInfo.sslCert);
+    const chainPath = path.resolve(appInfo.sslCa);
     return {
-      key: scope.fs.readFileSync(keyPath),
-      cert: scope.fs.readFileSync(certPath),
-      ca: scope.fs.readFileSync(chainPath),
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath),
+      ca: fs.readFileSync(chainPath),
     };
   };
 
-  scope.getTimestamp = () => {
+  const getTimestamp = () => {
     return new Date().toISOString().substr(0, 19).replace('T', ' ');
   };
 
-  scope.startServer = async () => {
-    clearInterval(scope.initInterval);
-    scope.initInterval = setInterval(async () => {
+  const startServer = async () => {
+    clearInterval(initInterval);
+    initInterval = setInterval(async () => {
       try {
-        const app = (await scope.db('app').where('bundleUid', scope.appInfo.bundleUid).first()) || null;
-        const appPocket = typeof app?.pocket === 'string' && app.pocket.length ? JSON.parse(app.pocket) : {};
-        scope.appMaintenance = !!appPocket.coreState?.appMaintenance;
+        const appRecord = (await db('app').where('bundleUid', appInfo.bundleUid).first()) || null;
+        const appPocket =
+          typeof appRecord?.pocket === 'string' && appRecord.pocket.length ? JSON.parse(appRecord.pocket) : {};
+        appMaintenance = !!appPocket.coreState?.appMaintenance;
       } catch (err) {
-        scope.logger().error(err);
+        logger().error(err);
       }
     }, 2000);
 
-    scope.server = scope.https
-      .createServer(
-        {
-          ...scope.certs(scope.appInfo),
-          // SNICallback: async (currentDomain, cb) => {
-          //   const tls  = require('tls');
-          //   const secureContext = tls.createSecureContext(
-          //     await (async (): Promise<{ [key]: any }> => {
-          //       // other sync / async procedures can go here
-          //       return {
-          //         ...scope.certs(),
-          //       };
-          //     })(),
-          //   );
-          //   if (cb) {
-          //     cb(null, secureContext);
-          //     return;
-          //   }
-          //   return secureContext;
-          // },
-          rejectUnauthorized: false,
-        },
-        scope.app,
-      )
-      .listen(scope.appInfo.proxyPort);
-    scope.logger().info(`[${scope.getTimestamp()}] Proxy server running on port ${scope.appInfo.proxyPort}`);
-  };
+    server = await runServer(
+      { ...certs(appInfo), rejectUnauthorized: false },
+      app,
+      '@app/proxy/main',
+      async (nextModule) => {
+        await nextModule.main.run();
+      },
+      () => {
+        logger().info(`[${getTimestamp()}] Proxy server running on port ${appInfo.proxyPort}`);
+      },
+      5000,
+    );
 
-  // run {{
+    server.start(appInfo.proxyPort);
 
-  scope.run = async () => {
-    scope.needsGreenlock = !scope.hasCerts(scope.appInfo);
-
-    await scope.sconnect();
-
-    scope.app = scope.express();
-
-    for (const middleware of Object.values(scope.middleware)) {
-      scope.app.use(middleware);
-    }
-    for (const [routeScheme, middleware] of Object.entries(scope.routeMiddleware)) {
-      scope.app.use(routeScheme, middleware);
-    }
-
-    clearInterval(scope.startServerInterval);
-    scope.startServerInterval = setInterval(async () => {
-      if (!scope.hasCerts(scope.appInfo)) {
-        scope.logger().info('certificates not yet installed. waiting to start server...');
-        if (!greenlock && scope.appInfo.greenlockExecution === 'autorun') {
-          greenlock = true;
-          const greenlockCmd = scope.appInfo.environment !== 'production' ? 'ssl:greenlock' : 'ssl:greenlock:prod';
-          const greenlockProcess = scope.spawn('npm', ['run', greenlockCmd]);
-          greenlockProcess.stdout.on('data', (data) => {
-            scope.logger().info(data.toString());
+    setReload(async () => {
+      console.log('Reloading...');
+      clearInterval(initInterval);
+      clearInterval(startServerInterval);
+      clearTimeout(dbDestroyTimeout);
+      try {
+        await new Promise((resolve, reject) => {
+          clearTimeout(dbDestroyTimeout);
+          let resolved = false;
+          sconnected = false;
+          db.destroy(() => {
+            clearTimeout(dbDestroyTimeout);
+            if (resolved) {
+              return;
+            }
+            resolved = true;
+            resolve();
           });
-          greenlockProcess.stderr.on('data', (data) => {
-            scope.logger().error(data.toString());
-          });
-        }
-        return;
+          db = null;
+          dbDestroyTimeout = setTimeout(() => {
+            if (resolved) {
+              return;
+            }
+            resolved = true;
+            reject(new Error('Failed to properly disconnect MySQL connection'));
+          }, 5000);
+        });
+      } catch (err) {
+        logger().error(err);
       }
-      scope.needsGreenlock = false;
-      clearInterval(scope.startServerInterval);
-      await scope.startServer();
-    }, 5000);
+      await server.reload();
+    });
   };
 
-  // }}
+  //
 
-  scope.run();
-};
+  needsGreenlock = !hasCerts(appInfo);
+
+  await sconnect();
+
+  app = express();
+
+  for (const middlewareItem of Object.values(middleware)) {
+    app.use(middlewareItem);
+  }
+  for (const [routeScheme, middleware] of Object.entries(routeMiddleware)) {
+    app.use(routeScheme, middleware);
+  }
+
+  clearInterval(startServerInterval);
+  startServerInterval = setInterval(async () => {
+    if (!hasCerts(appInfo)) {
+      logger().info('certificates not yet installed. waiting to start server...');
+      if (!greenlock && appInfo.greenlockExecution === 'autorun') {
+        greenlock = true;
+        const greenlockCmd = appInfo.environment !== 'production' ? 'ssl:greenlock' : 'ssl:greenlock:prod';
+        const greenlockProcess = spawn('npm', ['run', greenlockCmd]);
+        greenlockProcess.stdout.on('data', (data) => {
+          logger().info(data.toString());
+        });
+        greenlockProcess.stderr.on('data', (data) => {
+          logger().error(data.toString());
+        });
+      }
+      return;
+    }
+    needsGreenlock = false;
+    clearInterval(startServerInterval);
+    await startServer();
+  }, 5000);
+});
 
 module.exports = { main };
