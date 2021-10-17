@@ -14,10 +14,13 @@
     "start:proxy:prod:sim": "NODE_ENV=production node ./proxy.entry.js",
     "restart:proxy:prod": "forever restart ./proxy.entry.js",
     "stop:proxy:prod": "forever stop ./proxy.entry.js",
+    "deploy:aproxy": "node ./scripts/deploy/deploy-aproxy",
+    "deploy:reload-aproxy": "node ./scripts/deploy/deploy-reload-aproxy",
+    "clean:aproxy": "node ./scripts/clean/clean-aproxy",
     "ssl:greenlock": "node ./scripts/ssl-greenlock",
     "ssl:greenlock:prod": "node ./scripts/ssl-greenlock",
-    "app:up": "node ./scripts/app-up",
-    "app:down": "node ./scripts/app-down"
+    "app:up": "node ./scripts/app/app-up",
+    "app:down": "node ./scripts/app/app-down"
   },
   "devDependencies": {
     "@app/omni": "file:../app-omni",
