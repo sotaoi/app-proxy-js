@@ -1,3 +1,5 @@
+#!/bin/env node
+
 const { init } = require('@app/omni/init');
 init();
 const { getAppInfo } = require('@sotaoi/omni/get-app-info');
